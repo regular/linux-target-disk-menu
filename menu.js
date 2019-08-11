@@ -20,7 +20,10 @@ function getDevices(cb) {
     } catch(err) {
       return cb(err)
     }
-    cb(null, result)
+    const {blockdevices} = result
+    cb(null, blockdevices.filter(dev => {
+      return dev.type !== 'loop'
+    }))
   })
 }
 
@@ -33,16 +36,17 @@ function bail(err) {
 function tags(dev) {
   const {subsystems} = dev
   const result = subsystems.split(':').filter(x => {
-    return x !== 'pci' && x !== 'block'
+    return x !== 'pci' && x !== 'block' && x !== 'scsi'
   })
-  if (dev.hotplug) result.push('hotplug')
+  if (Number(dev.hotplug)) result.push('hotplug')
   if (isMounted(dev)) result.push('mounted')
   return result
 }
 
 function isMounted(dev) {
   const {children} = dev
-  for(let part of children) {
+  
+  for(let part of children || []) {
     const {mountpoint} = part
     if (mountpoint) return true
   }
@@ -50,17 +54,16 @@ function isMounted(dev) {
 }
 function showDev(i, dev) {
   const {name, model, serial, size, subsystems, children} = dev
-  console.error(`${i}. ${name} ${hs(size)} ${model}, #${serial} (${tags(dev)})`)
-  for(let part of children) {
+  console.error(`${i}. ${name} ${hs(size)} ${model ? model.trim() : '[no model]'}, #${serial || '[no serial]'} (${tags(dev)})`)
+  for(let part of children || []) {
     const {fstype, size, label, uuid, mountpoint} = part
     console.error(`  ${fstype || '[no filesystem]'} ${hs(size)} ${label || '[no label]'} ${uuid || '[no UUID]'} ${mountpoint ? 'mounted to ' + mountpoint : ''}`)
   }
 }
 
 function showMenu() {
-  getDevices( (err, result) => {
+  getDevices( (err, blockdevices) => {
     if (err) bail(err)
-    const {blockdevices} = result
 
     let i = 0
     for(let dev of blockdevices) {
