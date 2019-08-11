@@ -1,0 +1,21 @@
+{
+  "name": "linux-target-disk-menu",
+  "version": "1.0.0",
+  "description": "cli menu of available disks (to be used by installer scripts)",
+  "main": "menu.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "linux-target-disk-menu": "menu.js"
+  },
+  "keywords": [
+    "linux",
+    "installer"
+  ],
+  "author": "Jan Bölsche <jan@lagomorph.de> (https://regular.codes/)",
+  "license": "ISC",
+  "dependencies": {
+    "human-size": "^1.1.0"
+  }
+}
