@@ -4,8 +4,8 @@ const hs = require('human-size')
 const readline = require('readline');
 
 const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stderr
+  input: process.stdin,
+  output: process.stderr
 })
 
 function getDevices(cb) {
@@ -30,25 +30,36 @@ function bail(err) {
   process.exit(1)
 }
 
-function tags(subsystems) {
-  return subsystems.split(':').filter(x => {
+function tags(dev) {
+  const {subsystems} = dev
+  const result = subsystems.split(':').filter(x => {
     return x !== 'pci' && x !== 'block'
   })
+  if (dev.hotplug) result.push('hotplug')
+  if (isMounted(dev)) result.push('mounted')
+  return result
 }
 
-function showDev(i, dev) {
-  const {model, serial, size, subsystems, children} = dev
-  console.error(`${i}. ${hs(size)} ${model}, #${serial} (${tags(subsystems)})`)
+function isMounted(dev) {
+  const {children} = dev
   for(let part of children) {
-    const {fstype, size, label, uuid} = part
-    console.error(`  ${fstype} ${hs(size)} ${label} ${uuid}`)
+    const {mountpoint} = part
+    if (mountpoint) return true
+  }
+  return false
+}
+function showDev(i, dev) {
+  const {name, model, serial, size, subsystems, children} = dev
+  console.error(`${i}. ${name} ${hs(size)} ${model}, #${serial} (${tags(dev)})`)
+  for(let part of children) {
+    const {fstype, size, label, uuid, mountpoint} = part
+    console.error(`  ${fstype || '[no filesystem]'} ${hs(size)} ${label || '[no label]'} ${uuid || '[no UUID]'} ${mountpoint ? 'mounted to ' + mountpoint : ''}`)
   }
 }
 
 function showMenu() {
   getDevices( (err, result) => {
     if (err) bail(err)
-    console.error(result)
     const {blockdevices} = result
 
     let i = 0
@@ -58,7 +69,12 @@ function showMenu() {
     rl.question( 'Select target disk (q to quit): ', answer => {
       if (answer == 'q') bail(new Error('aborted by user'))
       if (Number(answer) > 0 && Number(answer) <= blockdevices.length) {
-        console.log(blockdevices[Number(answer)-1].name)
+        const dev = blockdevices[Number(answer)-1]
+        if (isMounted(dev)) {
+          console.error('The selected device is currently used (mounted). Please select another device.')
+          return showMenu()
+        }
+        console.log(dev.name)
         rl.close()
         process.exit(0)
       } else {
