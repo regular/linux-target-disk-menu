@@ -77,9 +77,20 @@ function showMenu() {
           console.error('The selected device is currently used (mounted). Please select another device.')
           return showMenu()
         }
-        console.log(dev.name)
-        rl.close()
-        process.exit(0)
+        if (!dev.children || !dev.children.length) {
+          console.log(dev.name)
+          rl.close()
+          process.exit(0)
+        }
+        console.error(`Are you sure? ${dev.children.length} partition(s) on drive ${dev.name} will be destroyed and data will be lost!`)
+        rl.question('Type the word "destroy" to confirm (or ENTER to return to main menu): ', answer => {
+          if (answer !== 'destroy') {
+            return showMenu()
+          }
+          console.log(dev.name)
+          rl.close()
+          process.exit(0)
+        })
       } else {
         console.error('Invalid answer')
         showMenu()
